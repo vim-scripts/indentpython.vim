@@ -2,7 +2,7 @@
 " Language:	    Python
 " Maintainer:	    Eric Mc Sween <em@tomcom.de>
 " Original Author:  David Bustos <bustos@caltech.edu> 
-" Last Change:      2004 Apr 26 
+" Last Change:      2004 Jun 07
 
 " Only load this indent file when no other was loaded.
 if exists("b:did_indent")
@@ -26,7 +26,7 @@ function! s:SearchParensPair()
     " Skip strings and comments and don't look too far
     let skip = "line('.') < " . (line - s:maxoff) . " ? dummy :" .
                 \ 'synIDattr(synID(line("."), col("."), 0), "name") =~? ' .
-                \ '"string\|comment"'
+                \ '"string\\|comment"'
 
     " Search for parentheses
     call cursor(line, col)
@@ -60,6 +60,7 @@ function! s:SearchParensPair()
     return parlnum
 endfunction
 
+" Find the start of a multi-line statement
 function! s:StatementStart(lnum)
     let lnum = a:lnum
     while 1
@@ -77,6 +78,27 @@ function! s:StatementStart(lnum)
     endwhile
 endfunction
 
+" Find the block starter that matches the current line
+function! s:BlockStarter(lnum, block_start_re)
+    let lnum = a:lnum
+    let maxindent = 10000       " whatever
+    while lnum > 1
+        let lnum = prevnonblank(lnum - 1)
+        if indent(lnum) < maxindent
+            if getline(lnum) =~ a:block_start_re
+                return lnum
+            else 
+                let maxindent = indent(lnum)
+                " It's not worth going further if we reached the top level
+                if maxindent == 0
+                    return -1
+                endif
+            endif
+        endif
+    endwhile
+    return -1
+endfunction
+                
 function! GetPythonIndent(lnum)
 
     " First line has indent 0
@@ -84,20 +106,47 @@ function! GetPythonIndent(lnum)
         return 0
     endif
     
-    " If the previous line was blank, do nothing.
-    let pline = getline(a:lnum - 1)
-    if pline =~ '^\s*$'
-        return -1
-    endif
-    
-    " If we can find an open parenthesis/bracket/brace, align with it.
+    " If we can find an open parenthesis/bracket/brace, line up with it.
     call cursor(a:lnum, 1)
     let parlnum = s:SearchParensPair()
     if parlnum > 0
         return col('.')
     endif
+    
+    " Examine this line
+    let thisline = getline(a:lnum)
+    let thisindent = indent(a:lnum)
 
-    let sslnum = s:StatementStart(a:lnum - 1)
+    " If the line starts with 'elif' or 'else', line up with 'if' or 'elif'
+    if thisline =~ '^\s*\(elif\|else\)\>'
+        let bslnum = s:BlockStarter(a:lnum, '^\s*\(if\|elif\)\>')
+        if bslnum > 0
+            return indent(bslnum)
+        else
+            return -1
+        endif
+    endif
+        
+    " If the line starts with 'except' or 'finally', line up with 'try'
+    " or 'except'
+    if thisline =~ '^\s*\(except\|finally\)\>'
+        let bslnum = s:BlockStarter(a:lnum, '^\s*\(try\|except\)\>')
+        if bslnum > 0
+            return indent(bslnum)
+        else
+            return -1
+        endif
+    endif
+    
+    " Examine previous line
+    let plnum = a:lnum - 1
+    let pline = getline(plnum)
+    let sslnum = s:StatementStart(plnum)
+    
+    " If the previous line is blank, keep the same indentation
+    if pline =~ '^\s*$'
+        return -1
+    endif
     
     " If this line is explicitly joined, try to find an indentation that looks
     " good. 
@@ -110,15 +159,15 @@ function! GetPythonIndent(lnum)
             return indent(sslnum) + &sw * 2
         endif
     endif
-        
+    
     " If the previous line ended with a colon, indent relative to
     " statement start.
     if pline =~ ':\s*$'
         return indent(sslnum) + &sw
     endif
 
-    " If the previous line was a stop-execution statement...
-    if getline(sslnum) =~ '^\s*\(break\|continue\|raise\|return\)\>'
+    " If the previous line was a stop-execution statement or a pass
+    if getline(sslnum) =~ '^\s*\(break\|continue\|raise\|return\|pass\)\>'
         " See if the user has already dedented
         if indent(a:lnum) > indent(sslnum) - &sw
             " If not, recommend one dedent
@@ -128,5 +177,6 @@ function! GetPythonIndent(lnum)
         return -1
     endif
 
+    " In all other cases, line up with the start of the previous statement.
     return indent(sslnum)
 endfunction
