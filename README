@@ -1,0 +1,6 @@
+This is a mirror of http://www.vim.org/scripts/script.php?script_id=974
+
+This indentation script for python tries to match more closely what is suggested in PEP 8 (http://www.python.org/peps/pep-0008.html).  In particular, it handles continuation lines implied by open (parentheses), [brackets] and {braces} correctly and it indents multiline if/for/while statements differently.
+
+Comments are welcome!
+
