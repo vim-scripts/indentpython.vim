@@ -14,7 +14,7 @@ setlocal expandtab
 setlocal nolisp
 setlocal autoindent
 setlocal indentexpr=GetPythonIndent(v:lnum)
-setlocal indentkeys+=<:>,=elif,=except
+setlocal indentkeys=!^F,o,O,<:>,0),0],0},=elif,=except
 
 let s:maxoff = 50
 
@@ -110,7 +110,21 @@ function! GetPythonIndent(lnum)
     call cursor(a:lnum, 1)
     let parlnum = s:SearchParensPair()
     if parlnum > 0
-        return col('.')
+        let parcol = col('.')
+        let closing_paren = match(getline(a:lnum), '^\s*[])}]') != -1
+        if match(getline(parlnum), '[([{]\s*$', parcol - 1) != -1
+            if closing_paren
+                return indent(parlnum)
+            else
+                return indent(parlnum) + &shiftwidth
+            endif
+        else
+            if closing_paren
+                return parcol - 1
+            else
+                return parcol
+            endif
+        endif
     endif
     
     " Examine this line
