@@ -179,7 +179,7 @@ function! GetPythonIndent(lnum)
 	" comment.
 	" FIXME: Need to handle case where line ends with a colon but
 	" also includes a comment that also ends in a colon
-	if pline =~ ':\s*\(#.*\)$' && pline !~ '#.*:\s*$'
+	if pline =~ ':\s*\(#*.*\)$' && pline !~ '#.*:\s*$'
         return indent(sslnum) + &sw
     endif
 
