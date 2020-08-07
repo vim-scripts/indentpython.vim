@@ -177,11 +177,13 @@ function! GetPythonIndent(lnum)
     " If the previous line ended with a colon, indent relative to
 	" statement start. Unless the colon was after the start of a
 	" comment.
-	" FIXME: Need to handle case where line ends with a colon but
-	" also includes a comment that also ends in a colon
-	if pline =~ ':\s*\(#*.*\)$' && pline !~ '#.*:\s*$'
+	if pline =~ ':\s*$' && pline !~ '#.*:\s*$'
         return indent(sslnum) + &sw
     endif
+
+	if pline =~ ':\s*#'
+		return indent(sslnum) + &sw
+	endif
 
     " If the previous line was a stop-execution statement or a pass
     if getline(sslnum) =~ '^\s*\(break\|continue\|raise\|return\|pass\)\>'
